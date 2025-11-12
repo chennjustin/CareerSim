@@ -102,7 +102,7 @@ export default function NewActivityForm({ isOpen, onClose, onSubmit }: NewActivi
 
             <div>
               <label className="block text-sm font-medium text-gunmetal mb-2">
-                时间
+                時間
               </label>
               <input
                 type="time"

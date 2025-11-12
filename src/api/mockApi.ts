@@ -108,7 +108,7 @@ export const api = {
   },
 
   generateReport: async (interviewId: string): Promise<Report> => {
-    await delay(1500); // 模拟生成报告的时间
+    await delay(1500); // 模拟生成报告的時間
     const interviews = getStorageData<Interview[]>('interviews', mockInterviews);
     const interview = interviews.find(i => i.id === interviewId);
     if (!interview) throw new Error('Interview not found');
