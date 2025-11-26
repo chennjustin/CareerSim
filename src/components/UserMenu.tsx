@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User as UserIcon, ChevronDown } from 'lucide-react';
+import { LogOut, ChevronDown } from 'lucide-react';
 
 export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);

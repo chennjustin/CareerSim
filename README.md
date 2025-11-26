@@ -105,11 +105,49 @@ node firestore-init.js
 ```
 
 在 Firebase Console 的 Firestore Database 頁面確認：
+
 - `users` 集合（1 個文件）
 - `projects` 集合（2 個文件）
 - `reports` 集合（2 個文件）
 
-### 3. 啟動開發伺服器
+### 3. 設定 Firebase Authentication（Google 登入）
+
+#### 步驟 1：啟用 Authentication
+
+1. 前往 [Firebase Console - Authentication](https://console.firebase.google.com/project/careersim-dffdb/authentication)
+2. 點擊「開始使用」（如果尚未啟用）
+3. 切換到「登入方法」標籤頁
+4. 找到「Google」並點擊
+5. 將「啟用」開關設為開啟
+6. 點擊「儲存」
+
+#### 步驟 2：取得 Firebase Web App 配置
+
+1. 前往 [Firebase Console - 專案設定](https://console.firebase.google.com/project/careersim-dffdb/settings/general)
+2. 向下滾動到「您的應用程式」區塊
+3. 如果還沒有 Web 應用程式：
+   - 點擊「新增應用程式」
+   - 選擇 Web（</>）圖示
+   - 註冊應用程式（可自訂名稱）
+4. 複製配置值（API Key、Auth Domain、Project ID 等）
+
+#### 步驟 3：設置環境變數
+
+1. 在專案根目錄建立 `.env` 檔案
+2. 填入以下內容（替換為您的實際配置值）：
+
+```env
+VITE_FIREBASE_API_KEY=您的-api-key
+VITE_FIREBASE_AUTH_DOMAIN=careersim-dffdb.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=careersim-dffdb
+VITE_FIREBASE_STORAGE_BUCKET=careersim-dffdb.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=您的-messaging-sender-id
+VITE_FIREBASE_APP_ID=您的-app-id
+```
+
+⚠️ **重要**：`.env` 檔案包含敏感資訊，請勿提交到 Git（已加入 `.gitignore`）
+
+### 4. 啟動開發伺服器
 
 ```bash
 npm run dev
@@ -117,17 +155,90 @@ npm run dev
 
 專案將在 `http://localhost:3000` 啟動
 
-### 4. 建構生產版本
+## 📦 本地建置與部署
+
+### 建構生產版本
+
+建構生產版本的應用程式，會產生 `dist` 目錄：
 
 ```bash
 npm run build
 ```
 
-### 5. 預覽生產建構
+建構完成後，會在 `dist` 目錄中產生所有靜態檔案。
+
+### 本地預覽建構結果
+
+在部署前，可以先本地預覽建構後的應用程式：
 
 ```bash
 npm run preview
 ```
+
+這會啟動一個本地伺服器，顯示建構後的應用程式，方便測試生產版本是否正常運作。
+
+### 部署到 Firebase Hosting
+
+#### 方法 1：手動部署
+
+1. **建構專案**：
+
+   ```bash
+   npm run build
+   ```
+2. **部署到 Firebase**：
+
+   ```bash
+   firebase deploy --only hosting
+   ```
+
+   或簡單的：
+
+   ```bash
+   firebase deploy
+   ```
+3. **訪問網站**：
+
+   - 主要網址：https://careersim-dffdb.web.app
+   - 備用網址：https://careersim-dffdb.firebaseapp.com
+
+#### 方法 2：自動部署（GitHub Actions）
+
+已設置 GitHub Actions 自動部署工作流：
+
+1. **推送程式碼到 GitHub**：
+
+   ```bash
+   git add .
+   git commit -m "更新應用程式"
+   git push origin main
+   ```
+2. **自動部署流程**：
+
+   - GitHub Actions 會自動執行 `npm run build`
+   - 建構完成後自動部署到 Firebase Hosting
+   - 可以在 GitHub 的 Actions 標籤頁查看部署狀態
+
+### 環境變數部署注意事項
+
+⚠️ **重要**：`.env` 檔案不會自動部署。部署到 Firebase Hosting 時需要：
+
+**選項 A：在 GitHub Secrets 設置環境變數（推薦）**
+
+1. 前往 GitHub 倉庫 → Settings → Secrets and variables → Actions
+2. 點擊「New repository secret」
+3. 添加所有 `VITE_` 開頭的環境變數：
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+4. 工作流已自動配置，建構時會自動使用這些 GitHub Secrets
+
+**選項 B：手動部署時使用環境變數**
+
+手動部署時，`.env` 檔案會在建構時自動使用（因為在本地執行 `npm run build`）。確保 `.env` 檔案已正確設置並包含所有必要的 Firebase 配置值。
 
 ## 📁 專案結構
 
@@ -180,21 +291,26 @@ firestore/
 ### 主要欄位說明
 
 **users 集合**
+
 - `id`, `name`, `email`, `createdAt`
 
 **projects 集合**
+
 - `userId`, `title`, `type`, `keywords`, `createdAt`
 
 **chatrooms 子集合**
+
 - `status` (scheduled/in-progress/completed)
 - `aiPersonality` (friendly/formal/stress-test)
 - `createdAt`, `completedAt`
 
 **messages 子集合**
+
 - `role` (interviewer/user)
 - `content`, `timestamp`
 
 **reports 集合**
+
 - `chatroomId`, `projectId`, `userId`
 - `overallScore`, `expression`, `content`, `structure`, `language`
 - `strengths`, `improvements`, `recommendations`
@@ -220,6 +336,7 @@ firestore/
 ### Q: Firestore API 未啟用錯誤？
 
 **A:** 請確認：
+
 1. 已在 Google Cloud Console 啟用 Firestore API
 2. 已在 Firebase Console 建立 Firestore 資料庫
 3. 等待 2-3 分鐘讓設定生效
@@ -227,6 +344,7 @@ firestore/
 ### Q: 服務帳號金鑰檔案找不到？
 
 **A:** 確認：
+
 - 檔案名稱：`service-account-key.json`
 - 檔案位置：專案根目錄（與 `firestore-init.js` 同一層）
 - 路徑使用：`./service-account-key.json`

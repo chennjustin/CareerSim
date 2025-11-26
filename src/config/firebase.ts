@@ -1,6 +1,6 @@
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 // Firebase 配置
 const firebaseConfig = {
@@ -12,20 +12,13 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// 初始化 Firebase
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+// 初始化 Firebase（避免重複初始化）
+const app = getApps().length > 0 
+  ? getApps()[0] 
+  : initializeApp(firebaseConfig);
 
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-} else {
-  app = getApps()[0];
-  auth = getAuth(app);
-  db = getFirestore(app);
-}
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 export { app, auth, db };
 
