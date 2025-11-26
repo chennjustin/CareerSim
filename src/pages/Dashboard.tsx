@@ -5,6 +5,7 @@ import { Interview, ViewMode } from '../types';
 import { api } from '../api/mockApi';
 import ActivityCard from '../components/ActivityCard';
 import NewActivityForm from '../components/NewActivityForm';
+import UserMenu from '../components/UserMenu';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek } from 'date-fns';
 
 export default function Dashboard() {
@@ -94,6 +95,7 @@ export default function Dashboard() {
               <Plus className="w-5 h-5" />
               <span>新增活動</span>
             </button>
+            <UserMenu />
           </div>
         </div>
 
