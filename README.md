@@ -21,17 +21,95 @@ CareerSim 是一個基於 React + Vite + Tailwind CSS 建構的 AI 面試模擬�
 - **路由**: React Router v6
 - **日期處理**: date-fns
 - **圖示**: Lucide React
-- **資料儲存**: localStorage (偽後端)
+- **資料庫**: Firebase Firestore (NoSQL)
 
 ## 🚀 快速開始
 
-### 安裝相依套件
+### 1. 安裝相依套件
 
 ```bash
 npm install
 ```
 
-### 啟動開發伺服器
+### 2. 設定 Firebase Firestore 資料庫
+
+#### 步驟 1：建立 Firebase 專案
+
+1. 前往 [Firebase Console](https://console.firebase.google.com/)
+2. 點擊「新增專案」或選擇現有專案
+3. 記下您的專案 ID（例如：`careersim-dffdb`）
+
+#### 步驟 2：啟用 Firestore API
+
+**方法 A：在 Google Cloud Console 啟用（推薦）**
+
+1. 前往 [Firestore API 頁面](https://console.developers.google.com/apis/api/firestore.googleapis.com/overview)
+2. 選擇您的專案
+3. 點擊「啟用」按鈕
+4. 等待 1-2 分鐘讓設定生效
+
+**方法 B：在 Firebase Console 建立資料庫（會自動啟用 API）**
+
+1. 前往 Firebase Console → Firestore Database
+2. 點擊「建立資料庫」或「開始使用」
+3. 選擇資料庫模式（建議選擇「測試模式」）
+4. 選擇資料庫位置（建議選擇離您最近的區域，如 `asia-east1`）
+5. 點擊「啟用」
+
+#### 步驟 3：取得服務帳號金鑰檔案
+
+1. 在 Firebase Console 中，點擊左側的 **⚙️ 專案設定**
+2. 切換到 **服務帳號** 標籤頁
+3. 點擊 **產生新的私密金鑰** 按鈕
+4. 確認對話框後，會下載一個 JSON 檔案
+5. 將檔案重新命名為 `service-account-key.json`
+6. **將檔案放到專案根目錄**（與 `firestore-init.js` 同一層）
+
+⚠️ **重要**：此檔案包含敏感資訊，請勿提交到 Git（已加入 `.gitignore`）
+
+#### 步驟 4：初始化資料庫
+
+執行初始化腳本將範例資料匯入 Firestore：
+
+```bash
+# 方法 1：使用命令列參數（推薦）
+node firestore-init.js --projectId=your-project-id --keyFile=./service-account-key.json
+
+# 方法 2：使用環境變數
+# Windows PowerShell:
+$env:GOOGLE_APPLICATION_CREDENTIALS="./service-account-key.json"
+$env:GCLOUD_PROJECT="your-project-id"
+node firestore-init.js
+
+# Linux/Mac:
+export GOOGLE_APPLICATION_CREDENTIALS="./service-account-key.json"
+export GCLOUD_PROJECT="your-project-id"
+node firestore-init.js
+```
+
+**注意**：請將 `your-project-id` 替換為您的實際專案 ID（可在 `service-account-key.json` 檔案中的 `project_id` 欄位找到）
+
+#### 步驟 5：驗證資料庫初始化
+
+如果成功，您應該會看到：
+
+```
+✅ 資料庫初始化完成！
+
+📊 數據統計：
+   - 用戶：1 個
+   - 專案：2 個
+   - 報告：2 個
+   - 聊天室：3 個
+   - 消息：7 條
+```
+
+在 Firebase Console 的 Firestore Database 頁面確認：
+- `users` 集合（1 個文件）
+- `projects` 集合（2 個文件）
+- `reports` 集合（2 個文件）
+
+### 3. 啟動開發伺服器
 
 ```bash
 npm run dev
@@ -39,13 +117,13 @@ npm run dev
 
 專案將在 `http://localhost:3000` 啟動
 
-### 建構生產版本
+### 4. 建構生產版本
 
 ```bash
 npm run build
 ```
 
-### 預覽生產建構
+### 5. 預覽生產建構
 
 ```bash
 npm run preview
@@ -56,18 +134,71 @@ npm run preview
 ```
 CareerSim/
 ├── src/
-│   ├── api/           # Mock API 介面
-│   ├── components/    # 可重複使用元件
-│   ├── data/          # Mock 資料
-│   ├── pages/         # 頁面元件
-│   ├── types/         # TypeScript 型別定義
-│   ├── App.tsx        # 主應用元件
-│   ├── main.tsx       # 應用入口
-│   └── index.css      # 全域樣式
-├── public/            # 靜態資源
-├── index.html         # HTML 範本
-└── package.json       # 專案設定
+│   ├── api/                    # API 介面
+│   ├── components/             # 可重複使用元件
+│   ├── data/                   # Mock 資料
+│   ├── pages/                  # 頁面元件
+│   ├── types/                  # TypeScript 型別定義
+│   ├── App.tsx                 # 主應用元件
+│   ├── main.tsx                # 應用入口
+│   └── index.css               # 全域樣式
+├── public/                     # 靜態資源
+├── firestore-init.js           # Firestore 初始化腳本
+├── firestore-sample-data.json  # 範例資料
+├── service-account-key.json    # Firebase 服務帳號金鑰（不提交到 Git）
+├── index.html                  # HTML 範本
+└── package.json                # 專案設定
 ```
+
+## 🗄️ 資料庫結構
+
+### Firestore 集合架構
+
+```
+firestore/
+├── users/                      # 用戶集合
+│   └── {userId}/
+│
+├── projects/                   # 專案集合（面試活動）
+│   └── {projectId}/
+│       └── chatrooms/          # 聊天室子集合（面試過程）
+│           └── {chatroomId}/
+│               └── messages/   # 消息子集合（對話記錄）
+│                   └── {messageId}/
+│
+└── reports/                    # 報告集合
+    └── {reportId}/
+```
+
+### 資料關係
+
+- **User (1) → Projects (N)**：一個用戶可以建立多個專案
+- **Project (1) → Chatrooms (N)**：一個專案可以有多個聊天室（多次練習）
+- **Chatroom (1) → Messages (N)**：一個聊天室有多條消息（對話記錄）
+- **Chatroom (1) → Report (1)**：一個聊天室對應一個報告
+
+### 主要欄位說明
+
+**users 集合**
+- `id`, `name`, `email`, `createdAt`
+
+**projects 集合**
+- `userId`, `title`, `type`, `keywords`, `createdAt`
+
+**chatrooms 子集合**
+- `status` (scheduled/in-progress/completed)
+- `aiPersonality` (friendly/formal/stress-test)
+- `createdAt`, `completedAt`
+
+**messages 子集合**
+- `role` (interviewer/user)
+- `content`, `timestamp`
+
+**reports 集合**
+- `chatroomId`, `projectId`, `userId`
+- `overallScore`, `expression`, `content`, `structure`, `language`
+- `strengths`, `improvements`, `recommendations`
+- `createdAt`
 
 ## 🎨 設計特色
 
@@ -84,6 +215,30 @@ CareerSim/
 4. **檢視報告** - 面試結束後自動產生詳細的分析報告
 5. **改進練習** - 根據報告建議進行針對性練習
 
+## 🔧 常見問題
+
+### Q: Firestore API 未啟用錯誤？
+
+**A:** 請確認：
+1. 已在 Google Cloud Console 啟用 Firestore API
+2. 已在 Firebase Console 建立 Firestore 資料庫
+3. 等待 2-3 分鐘讓設定生效
+
+### Q: 服務帳號金鑰檔案找不到？
+
+**A:** 確認：
+- 檔案名稱：`service-account-key.json`
+- 檔案位置：專案根目錄（與 `firestore-init.js` 同一層）
+- 路徑使用：`./service-account-key.json`
+
+### Q: 專案 ID 錯誤？
+
+**A:** 檢查 `service-account-key.json` 檔案中的 `project_id` 欄位，使用正確的專案 ID。
+
+### Q: 如何重新初始化資料庫？
+
+**A:** 執行初始化腳本會自動覆蓋現有資料。如需清空資料，請在 Firebase Console 手動刪除集合。
+
 ## 🔮 未來計畫
 
 - [ ] 語音輸入/輸出整合（Whisper API + ElevenLabs）
@@ -91,6 +246,7 @@ CareerSim/
 - [ ] 更豐富的 AI 面試官角色和問題庫
 - [ ] PDF 報告匯出功能
 - [ ] 使用者認證和雲端資料同步
+- [ ] Firestore 安全規則優化
 
 ## 📄 授權
 

@@ -1,0 +1,154 @@
+{
+  "users": [
+    {
+      "id": "user1",
+      "name": "Demo User",
+      "email": "demo@careersim.com",
+      "createdAt": "2024-01-10T10:00:00Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": "project1",
+      "userId": "user1",
+      "title": "軟體工程師面試準備",
+      "type": "Technical",
+      "keywords": ["專題研究", "系統設計", "演算法"],
+      "createdAt": "2024-01-10T10:00:00Z",
+      "chatrooms": [
+        {
+          "id": "chatroom1",
+          "status": "completed",
+          "aiPersonality": "friendly",
+          "createdAt": "2024-01-15T14:00:00Z",
+          "completedAt": "2024-01-15T14:30:00Z",
+          "messages": [
+            {
+              "id": "msg1",
+              "role": "interviewer",
+              "content": "您好，歡迎參加這次模擬面試。請先簡單介紹一下您自己。",
+              "timestamp": "2024-01-15T14:00:00Z"
+            },
+            {
+              "id": "msg2",
+              "role": "user",
+              "content": "您好，我是一名電腦科學專業的應屆畢業生，對軟體開發有濃厚的興趣。",
+              "timestamp": "2024-01-15T14:01:00Z"
+            },
+            {
+              "id": "msg3",
+              "role": "interviewer",
+              "content": "很好。請描述一下您在專案開發中遇到的最大挑戰，以及您是如何解決的。",
+              "timestamp": "2024-01-15T14:02:00Z"
+            },
+            {
+              "id": "msg4",
+              "role": "user",
+              "content": "在開發一個電商平台時，我遇到了效能優化的問題。透過程式碼分析和資料庫優化，最終將頁面載入時間減少了50%。",
+              "timestamp": "2024-01-15T14:03:00Z"
+            }
+          ]
+        },
+        {
+          "id": "chatroom2",
+          "status": "completed",
+          "aiPersonality": "formal",
+          "createdAt": "2024-01-16T10:00:00Z",
+          "completedAt": "2024-01-16T10:25:00Z",
+          "messages": [
+            {
+              "id": "msg5",
+              "role": "interviewer",
+              "content": "請解釋一下 React Hooks 的工作原理。",
+              "timestamp": "2024-01-16T10:00:00Z"
+            },
+            {
+              "id": "msg6",
+              "role": "user",
+              "content": "React Hooks 是 React 16.8 引入的功能，讓函數組件可以使用狀態和生命週期方法...",
+              "timestamp": "2024-01-16T10:01:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "project2",
+      "userId": "user1",
+      "title": "產品經理面試準備",
+      "type": "Behavioral",
+      "keywords": ["職涯規劃", "團隊合作"],
+      "createdAt": "2024-01-12T09:00:00Z",
+      "chatrooms": [
+        {
+          "id": "chatroom3",
+          "status": "in-progress",
+          "aiPersonality": "stress-test",
+          "createdAt": "2024-01-18T15:30:00Z",
+          "messages": [
+            {
+              "id": "msg7",
+              "role": "interviewer",
+              "content": "請描述一個您領導團隊完成專案的經驗。",
+              "timestamp": "2024-01-18T15:30:00Z"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "reports": [
+    {
+      "id": "report1",
+      "chatroomId": "chatroom1",
+      "projectId": "project1",
+      "userId": "user1",
+      "overallScore": 85,
+      "expression": 88,
+      "content": 82,
+      "structure": 85,
+      "language": 90,
+      "strengths": [
+        "回答結構清晰，邏輯性強",
+        "能夠提供具體的專案案例",
+        "語言表達流暢自然"
+      ],
+      "improvements": [
+        "可以更詳細地解釋技術細節",
+        "建議增加對問題背後原理的深入分析",
+        "可以準備更多量化的成果資料"
+      ],
+      "recommendations": [
+        "繼續練習 STAR 方法回答行為問題",
+        "準備更多技術深度問題的回答",
+        "練習在壓力下的快速思考能力"
+      ],
+      "createdAt": "2024-01-15T14:35:00Z"
+    },
+    {
+      "id": "report2",
+      "chatroomId": "chatroom2",
+      "projectId": "project1",
+      "userId": "user1",
+      "overallScore": 78,
+      "expression": 80,
+      "content": 75,
+      "structure": 78,
+      "language": 82,
+      "strengths": [
+        "技術知識紮實",
+        "能夠清楚解釋概念"
+      ],
+      "improvements": [
+        "可以增加更多實際應用案例",
+        "建議加強回答的深度"
+      ],
+      "recommendations": [
+        "多練習技術問題的回答",
+        "準備更多實戰經驗分享"
+      ],
+      "createdAt": "2024-01-16T10:30:00Z"
+    }
+  ]
+}
+
