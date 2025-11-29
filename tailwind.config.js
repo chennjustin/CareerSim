@@ -7,15 +7,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 基于图片调色板的自定义颜色
+        // Color palette - use only these colors
         'black': '#0A0908',
         'gunmetal': '#22333B',
         'white-smoke': '#F2F4F3',
         'beaver': '#A9927D',
         'walnut': '#5E503F',
-        // 功能颜色
-        'primary': '#3B82F6',
-        'accent': '#6366F1',
+        // Semantic aliases using palette colors
+        'primary': '#22333B', // Gunmetal for primary actions
+        'accent': '#A9927D', // Beaver for accents
       },
       fontFamily: {
         'sans': ['Inter', 'Noto Sans TC', 'system-ui', 'sans-serif'],

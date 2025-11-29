@@ -1,4 +1,4 @@
-import { Interview, Report, User, Message } from '../types';
+import { ChatSession, Interview, Report, User, Message } from '../types';
 import { mockInterviews, mockReports, mockUser } from '../data/mockData';
 
 // 模拟 API 延迟
@@ -23,11 +23,78 @@ const setStorageData = <T>(key: string, data: T): void => {
   }
 };
 
+const normalizeChat = (chat: Partial<ChatSession>, fallbackCreatedAt: string, interviewId: string, index: number): ChatSession => {
+  const messages = Array.isArray(chat.messages) ? chat.messages : [];
+  const createdAt = chat.createdAt || fallbackCreatedAt;
+  const updatedAt =
+    chat.updatedAt ||
+    (messages.length ? messages[messages.length - 1].timestamp : createdAt);
+  return {
+    id: chat.id || `${interviewId}-chat-${index + 1}`,
+    title: chat.title || '新對話',
+    createdAt,
+    updatedAt,
+    messages,
+  };
+};
+
+const normalizeInterview = (rawInterview: any): Interview => {
+  const {
+    chats: storedChats = [],
+    messages: legacyMessages = [],
+    createdAt: storedCreatedAt,
+    ...rest
+  } = rawInterview;
+
+  const interviewId = rest.id || `${rest.title ?? 'interview'}-${Date.now()}`;
+  const createdAt = storedCreatedAt || new Date().toISOString();
+  const fallbackMessages = Array.isArray(legacyMessages) ? legacyMessages : [];
+
+  const normalizedChats =
+    Array.isArray(storedChats) && storedChats.length > 0
+      ? storedChats.map((chat: Partial<ChatSession>, index: number) =>
+          normalizeChat(chat, createdAt, interviewId, index)
+        )
+      : fallbackMessages.length > 0
+      ? [
+          {
+            id: `${interviewId}-chat-1`,
+            title: '新對話',
+            createdAt,
+            updatedAt: fallbackMessages[fallbackMessages.length - 1].timestamp,
+            messages: fallbackMessages,
+          },
+        ]
+      : []; // Don't create a chat if there are no messages
+
+  return {
+    ...rest,
+    id: interviewId,
+    createdAt,
+    chats: normalizedChats,
+  } as Interview;
+};
+
+const normalizeInterviews = (rawInterviews: any[]): Interview[] => {
+  if (!Array.isArray(rawInterviews)) return [];
+  return rawInterviews.map(normalizeInterview);
+};
+
+const getStoredInterviews = (): Interview[] => {
+  const stored = getStorageData<any[]>('interviews', mockInterviews);
+  return normalizeInterviews(stored);
+};
+
+const persistInterviews = (interviews: Interview[]) => {
+  // Store interviews as-is without normalization
+  // Normalization only happens when reading from storage (in getStoredInterviews)
+  setStorageData('interviews', interviews);
+};
+
 // 初始化数据
 const initStorage = () => {
-  if (!localStorage.getItem('interviews')) {
-    setStorageData('interviews', mockInterviews);
-  }
+  const storedInterviews = getStorageData<any[]>('interviews', mockInterviews);
+  setStorageData('interviews', normalizeInterviews(storedInterviews));
   if (!localStorage.getItem('reports')) {
     setStorageData('reports', mockReports);
   }
@@ -48,13 +115,12 @@ export const api = {
   // Interview API
   getInterviews: async (): Promise<Interview[]> => {
     await delay(500);
-    return getStorageData('interviews', mockInterviews);
+    return getStoredInterviews();
   },
 
   getInterview: async (id: string): Promise<Interview | null> => {
     await delay(300);
-    const interviews = getStorageData<Interview[]>('interviews', mockInterviews);
-    return interviews.find(i => i.id === id) || null;
+    return getStoredInterviews().find(i => i.id === id) || null;
   },
 
   createInterview: async (interview: Omit<Interview, 'id' | 'createdAt'>): Promise<Interview> => {
@@ -63,28 +129,57 @@ export const api = {
       ...interview,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
+      chats: [],
     };
-    const interviews = getStorageData<Interview[]>('interviews', mockInterviews);
+    const interviews = getStoredInterviews();
     interviews.push(newInterview);
-    setStorageData('interviews', interviews);
+    persistInterviews(interviews);
     return newInterview;
   },
 
   updateInterview: async (id: string, updates: Partial<Interview>): Promise<Interview> => {
     await delay(400);
-    const interviews = getStorageData<Interview[]>('interviews', mockInterviews);
+    const interviews = getStoredInterviews();
     const index = interviews.findIndex(i => i.id === id);
     if (index === -1) throw new Error('Interview not found');
     interviews[index] = { ...interviews[index], ...updates };
-    setStorageData('interviews', interviews);
+    persistInterviews(interviews);
     return interviews[index];
   },
 
-  addMessage: async (interviewId: string, message: Omit<Message, 'id' | 'timestamp'>): Promise<Message> => {
+  createChat: async (interviewId: string, title?: string): Promise<ChatSession> => {
     await delay(300);
-    const interviews = getStorageData<Interview[]>('interviews', mockInterviews);
+    const interviews = getStoredInterviews();
     const interview = interviews.find(i => i.id === interviewId);
     if (!interview) throw new Error('Interview not found');
+
+    // Count only chats that have messages (exclude empty chats)
+    const existingChats = interview.chats || [];
+    const chatsWithMessages = existingChats.filter(chat => chat.messages && chat.messages.length > 0);
+    const chatNumber = chatsWithMessages.length + 1;
+
+    const newChat: ChatSession = {
+      id: Date.now().toString(),
+      title: title || `新對話 ${chatNumber}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [],
+    };
+
+    // Add new chat to the list
+    interview.chats = [...existingChats, newChat];
+    persistInterviews(interviews);
+    return newChat;
+  },
+
+  addMessage: async (interviewId: string, chatId: string, message: Omit<Message, 'id' | 'timestamp'>): Promise<Message> => {
+    await delay(300);
+    const interviews = getStoredInterviews();
+    const interview = interviews.find(i => i.id === interviewId);
+    if (!interview) throw new Error('Interview not found');
+
+    const chat = interview.chats.find(c => c.id === chatId);
+    if (!chat) throw new Error('Chat session not found');
     
     const newMessage: Message = {
       ...message,
@@ -92,24 +187,45 @@ export const api = {
       timestamp: new Date().toISOString(),
     };
     
-    if (!interview.messages) {
-      interview.messages = [];
-    }
-    interview.messages.push(newMessage);
-    setStorageData('interviews', interviews);
+    chat.messages = [...chat.messages, newMessage];
+    chat.updatedAt = newMessage.timestamp;
+    persistInterviews(interviews);
     return newMessage;
   },
 
-  // Report API
-  getReport: async (interviewId: string): Promise<Report | null> => {
+  updateChatTitle: async (interviewId: string, chatId: string, title: string): Promise<ChatSession> => {
     await delay(300);
-    const reports = getStorageData<Report[]>('reports', mockReports);
-    return reports.find(r => r.interviewId === interviewId) || null;
+    const interviews = getStoredInterviews();
+    const interview = interviews.find(i => i.id === interviewId);
+    if (!interview) throw new Error('Interview not found');
+
+    const chat = interview.chats.find(c => c.id === chatId);
+    if (!chat) throw new Error('Chat session not found');
+    
+    chat.title = title;
+    persistInterviews(interviews);
+    return chat;
   },
 
-  generateReport: async (interviewId: string): Promise<Report> => {
+  // Report API
+  getReport: async (interviewId: string, chatId?: string): Promise<Report | null> => {
+    await delay(300);
+    const reports = getStorageData<Report[]>('reports', mockReports);
+    if (chatId) {
+      return reports.find(r => r.interviewId === interviewId && r.chatId === chatId) || null;
+    }
+    return reports.find(r => r.interviewId === interviewId && !r.chatId) || null;
+  },
+
+  getReportsForInterview: async (interviewId: string): Promise<Report[]> => {
+    await delay(300);
+    const reports = getStorageData<Report[]>('reports', mockReports);
+    return reports.filter(r => r.interviewId === interviewId);
+  },
+
+  generateReport: async (interviewId: string, chatId?: string): Promise<Report> => {
     await delay(1500); // 模拟生成报告的時間
-    const interviews = getStorageData<Interview[]>('interviews', mockInterviews);
+    const interviews = getStoredInterviews();
     const interview = interviews.find(i => i.id === interviewId);
     if (!interview) throw new Error('Interview not found');
 
@@ -117,6 +233,7 @@ export const api = {
     const newReport: Report = {
       id: Date.now().toString(),
       interviewId,
+      chatId,
       overallScore: Math.floor(Math.random() * 20) + 75, // 75-95
       expression: Math.floor(Math.random() * 20) + 75,
       content: Math.floor(Math.random() * 20) + 75,

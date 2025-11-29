@@ -28,7 +28,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-white-smoke to-accent/10 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white-smoke flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         {/* Logo 和標題 */}
         <div className="text-center mb-8 animate-fade-in">
@@ -37,7 +37,7 @@ export default function Login() {
         </div>
 
         {/* 登入卡片 */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 animate-scale-in">
+        <div className="bg-white rounded-lg shadow-lg border border-white-smoke p-8 animate-scale-in">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-semibold text-gunmetal mb-2">歡迎回來</h2>
             <p className="text-gunmetal/70">登入以開始您的面試練習之旅</p>
@@ -54,7 +54,7 @@ export default function Login() {
           <button
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 text-gunmetal px-6 py-4 rounded-xl font-medium hover:border-primary hover:bg-primary/5 transition-smooth disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-white-smoke text-gunmetal px-6 py-4 rounded-lg font-medium hover:border-gunmetal hover:bg-gunmetal/5 transition-smooth disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
           >
             {loading ? (
               <>

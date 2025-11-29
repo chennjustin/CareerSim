@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Interview } from '../types';
 import { api } from '../api/mockApi';
@@ -7,16 +7,27 @@ interface NewActivityFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (interview: Interview) => void;
+  initialDate?: string;
 }
 
-export default function NewActivityForm({ isOpen, onClose, onSubmit }: NewActivityFormProps) {
-  const [formData, setFormData] = useState({
+const defaultFormData = {
     title: '',
     type: 'Technical',
     date: '',
     time: '',
-  });
+};
+
+export default function NewActivityForm({ isOpen, onClose, onSubmit, initialDate }: NewActivityFormProps) {
+  const [formData, setFormData] = useState(defaultFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData({
+      ...defaultFormData,
+      date: initialDate ?? '',
+    });
+  }, [isOpen, initialDate]);
 
   if (!isOpen) return null;
 
@@ -34,7 +45,7 @@ export default function NewActivityForm({ isOpen, onClose, onSubmit }: NewActivi
       });
 
       onSubmit(newInterview);
-      setFormData({ title: '', type: 'Technical', date: '', time: '' });
+      setFormData({ ...defaultFormData });
       onClose();
     } catch (error) {
       console.error('Failed to create interview:', error);
@@ -45,7 +56,7 @@ export default function NewActivityForm({ isOpen, onClose, onSubmit }: NewActivi
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 animate-scale-in">
+      <div className="bg-white rounded-lg shadow-lg border border-white-smoke w-full max-w-md mx-4 animate-scale-in">
         <div className="flex items-center justify-between p-6 border-b border-white-smoke">
           <h2 className="text-xl font-semibold text-gunmetal">新增面試活動</h2>
           <button
@@ -65,7 +76,7 @@ export default function NewActivityForm({ isOpen, onClose, onSubmit }: NewActivi
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-2 border border-white-smoke rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-4 py-2 border border-white-smoke rounded-md focus:outline-none focus:ring-2 focus:ring-gunmetal/20 focus:border-gunmetal/30"
               placeholder="例如：Software Engineer Mock Interview"
               required
             />
@@ -78,7 +89,7 @@ export default function NewActivityForm({ isOpen, onClose, onSubmit }: NewActivi
             <select
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              className="w-full px-4 py-2 border border-white-smoke rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-4 py-2 border border-white-smoke rounded-md focus:outline-none focus:ring-2 focus:ring-gunmetal/20 focus:border-gunmetal/30"
             >
               <option value="Technical">技術面試</option>
               <option value="Behavioral">行為面試</option>
@@ -96,7 +107,7 @@ export default function NewActivityForm({ isOpen, onClose, onSubmit }: NewActivi
                 type="date"
                 value={formData.date}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full px-4 py-2 border border-white-smoke rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-4 py-2 border border-white-smoke rounded-md focus:outline-none focus:ring-2 focus:ring-gunmetal/20 focus:border-gunmetal/30"
               />
             </div>
 
@@ -108,7 +119,7 @@ export default function NewActivityForm({ isOpen, onClose, onSubmit }: NewActivi
                 type="time"
                 value={formData.time}
                 onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                className="w-full px-4 py-2 border border-white-smoke rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-4 py-2 border border-white-smoke rounded-md focus:outline-none focus:ring-2 focus:ring-gunmetal/20 focus:border-gunmetal/30"
               />
             </div>
           </div>
@@ -124,7 +135,7 @@ export default function NewActivityForm({ isOpen, onClose, onSubmit }: NewActivi
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:brightness-110 transition-smooth disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-gunmetal text-white rounded-lg hover:bg-black transition-smooth disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {isSubmitting ? '建立中...' : '建立'}
             </button>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, RotateCcw, Calendar } from 'lucide-react';
 import { Report, Interview } from '../types';
 import { api } from '../api/mockApi';
@@ -31,7 +31,7 @@ function ScoreCircle({ score, label, size = 80 }: ScoreCircleProps) {
             cx={size / 2}
             cy={size / 2}
             r={size / 2 - 5}
-            stroke="#3B82F6"
+            stroke="#22333B"
             strokeWidth="8"
             fill="none"
             strokeDasharray={circumference}
@@ -51,7 +51,9 @@ function ScoreCircle({ score, label, size = 80 }: ScoreCircleProps) {
 
 export default function InterviewReport() {
   const { interviewId } = useParams<{ interviewId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const chatId = searchParams.get('chatId') || undefined;
   const [report, setReport] = useState<Report | null>(null);
   const [interview, setInterview] = useState<Interview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,28 +63,41 @@ export default function InterviewReport() {
     if (interviewId) {
       loadData();
     }
-  }, [interviewId]);
+  }, [interviewId, chatId]);
 
   const loadData = async () => {
     if (!interviewId) return;
     try {
       setLoading(true);
-      const [reportData, interviewData] = await Promise.all([
-        api.getReport(interviewId),
-        api.getInterview(interviewId),
-      ]);
+      const interviewData = await api.getInterview(interviewId);
+      setInterview(interviewData);
+      
+      // Get report for specific chat or interview
+      let reportData = await api.getReport(interviewId, chatId);
 
       if (!reportData && interviewData) {
-        // 如果沒有報告，產生一個
-        setGenerating(true);
-        const newReport = await api.generateReport(interviewId);
-        setReport(newReport);
-        setGenerating(false);
+        // Check if chat has enough messages to generate a report
+        if (chatId) {
+          const chat = interviewData.chats.find(c => c.id === chatId);
+          const interviewerCount = chat?.messages.filter(m => m.role === 'interviewer').length || 0;
+          
+          if (interviewerCount >= 5) {
+            // 如果沒有報告，產生一個
+            setGenerating(true);
+            const newReport = await api.generateReport(interviewId, chatId);
+            setReport(newReport);
+            setGenerating(false);
+          }
+        } else {
+          // Generate report for interview
+          setGenerating(true);
+          const newReport = await api.generateReport(interviewId);
+          setReport(newReport);
+          setGenerating(false);
+        }
       } else {
         setReport(reportData);
       }
-
-      setInterview(interviewData);
     } catch (error) {
       console.error('Failed to load report:', error);
     } finally {
@@ -130,20 +145,24 @@ export default function InterviewReport() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-gunmetal hover:text-primary mb-4 transition-smooth"
+            onClick={() => chatId ? navigate(`/interview/${interviewId}/chats`) : navigate('/dashboard')}
+            className="flex items-center gap-2 text-gunmetal hover:text-gunmetal/80 mb-4 transition-smooth"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>返回日曆</span>
+            <span>{chatId ? '返回對話列表' : '返回日曆'}</span>
           </button>
           <h1 className="text-3xl font-bold text-gunmetal mb-2">{interview.title}</h1>
+          {chatId && (() => {
+            const chat = interview.chats.find(c => c.id === chatId);
+            return chat && <p className="text-gunmetal/70 mb-1">{chat.title}</p>;
+          })()}
           <p className="text-gunmetal/70">
             {format(new Date(report.createdAt), 'yyyy年MM月dd日 HH:mm')}
           </p>
         </div>
 
         {/* Overall Score */}
-        <div className="bg-white rounded-xl shadow-md p-8 mb-6 animate-fade-in">
+        <div className="bg-white rounded-lg shadow-sm border border-white-smoke p-8 mb-6 animate-fade-in">
           <h2 className="text-2xl font-semibold text-gunmetal mb-6 text-center">總體評分</h2>
           <div className="flex justify-center">
             <ScoreCircle score={report.overallScore} label="總分" size={120} />
@@ -151,7 +170,7 @@ export default function InterviewReport() {
         </div>
 
         {/* Score Breakdown */}
-        <div className="bg-white rounded-xl shadow-md p-8 mb-6 animate-slide-up">
+        <div className="bg-white rounded-lg shadow-sm border border-white-smoke p-8 mb-6 animate-slide-up">
           <h2 className="text-xl font-semibold text-gunmetal mb-6">詳細評分</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <ScoreCircle score={report.expression} label="表達" />
@@ -162,12 +181,12 @@ export default function InterviewReport() {
         </div>
 
         {/* Strengths */}
-        <div className="bg-white rounded-xl shadow-md p-8 mb-6 animate-slide-up">
+        <div className="bg-white rounded-lg shadow-sm border border-white-smoke p-8 mb-6 animate-slide-up">
           <h2 className="text-xl font-semibold text-gunmetal mb-4">優勢總結</h2>
           <ul className="space-y-3">
             {report.strengths.map((strength, index) => (
               <li key={index} className="flex items-start gap-3">
-                <span className="text-primary text-xl">✓</span>
+                <span className="text-gunmetal text-xl">✓</span>
                 <span className="text-gunmetal">{strength}</span>
               </li>
             ))}
@@ -175,7 +194,7 @@ export default function InterviewReport() {
         </div>
 
         {/* Improvements */}
-        <div className="bg-white rounded-xl shadow-md p-8 mb-6 animate-slide-up">
+        <div className="bg-white rounded-lg shadow-sm border border-white-smoke p-8 mb-6 animate-slide-up">
           <h2 className="text-xl font-semibold text-gunmetal mb-4">改進建議</h2>
           <ul className="space-y-3">
             {report.improvements.map((improvement, index) => (
@@ -188,11 +207,11 @@ export default function InterviewReport() {
         </div>
 
         {/* Recommendations */}
-        <div className="bg-white rounded-xl shadow-md p-8 mb-6 animate-slide-up">
+        <div className="bg-white rounded-lg shadow-sm border border-white-smoke p-8 mb-6 animate-slide-up">
           <h2 className="text-xl font-semibold text-gunmetal mb-4">練習建議</h2>
           <div className="space-y-3">
             {report.recommendations.map((rec, index) => (
-              <div key={index} className="p-4 bg-white-smoke rounded-lg">
+              <div key={index} className="p-4 bg-white-smoke rounded-md">
                 <p className="text-gunmetal">{rec}</p>
               </div>
             ))}
@@ -203,21 +222,29 @@ export default function InterviewReport() {
         <div className="flex flex-wrap gap-4 justify-center animate-slide-up">
           <button
             onClick={handleExportPDF}
-            className="flex items-center gap-2 bg-white text-gunmetal px-6 py-3 rounded-xl shadow-md hover:shadow-lg transition-smooth border border-white-smoke"
+            className="flex items-center gap-2 bg-white text-gunmetal px-6 py-3 rounded-lg shadow-sm hover:shadow-md transition-smooth border border-white-smoke font-medium"
           >
             <Download className="w-5 h-5" />
             <span>匯出 PDF</span>
           </button>
           <button
-            onClick={() => navigate(`/interview/${interviewId}`)}
-            className="flex items-center gap-2 bg-beaver text-white px-6 py-3 rounded-xl shadow-md hover:brightness-110 transition-smooth"
+            onClick={async () => {
+              if (!interviewId) return;
+              try {
+                const newChat = await api.createChat(interviewId);
+                navigate(`/interview/${interviewId}/chat/${newChat.id}`);
+              } catch (error) {
+                console.error('Failed to create new chat:', error);
+              }
+            }}
+            className="flex items-center gap-2 bg-beaver text-white px-6 py-3 rounded-lg shadow-sm hover:bg-walnut transition-smooth font-medium"
           >
             <RotateCcw className="w-5 h-5" />
             <span>重新練習此主題</span>
           </button>
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl shadow-md hover:brightness-110 transition-smooth"
+            className="flex items-center gap-2 bg-gunmetal text-white px-6 py-3 rounded-lg shadow-sm hover:bg-black transition-smooth font-medium"
           >
             <Calendar className="w-5 h-5" />
             <span>返回日曆</span>

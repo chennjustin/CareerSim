@@ -6,6 +6,14 @@ export interface User {
 
 export type InterviewStatus = 'scheduled' | 'in-progress' | 'completed';
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: Message[];
+}
+
 export interface Interview {
   id: string;
   title: string;
@@ -15,7 +23,7 @@ export interface Interview {
   status: InterviewStatus;
   createdAt: string;
   completedAt?: string;
-  messages?: Message[];
+  chats: ChatSession[];
 }
 
 export interface Message {
@@ -28,6 +36,7 @@ export interface Message {
 export interface Report {
   id: string;
   interviewId: string;
+  chatId?: string;
   overallScore: number;
   expression: number;
   content: number;

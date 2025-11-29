@@ -50,7 +50,7 @@ export default function UserMenu() {
     }
     const initial = (currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
     return (
-      <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-sm">
+      <div className="w-8 h-8 rounded-full bg-gunmetal text-white flex items-center justify-center font-semibold text-sm">
         {initial}
       </div>
     );
@@ -70,7 +70,7 @@ export default function UserMenu() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 bg-white rounded-xl shadow-lg p-2 w-56 z-50 animate-scale-in border border-white-smoke">
+        <div className="absolute right-0 mt-2 bg-white rounded-lg shadow-md p-2 w-56 z-50 animate-scale-in border border-white-smoke">
           {/* 用戶資訊 */}
           <div className="px-4 py-3 border-b border-white-smoke">
             <div className="flex items-center gap-3">

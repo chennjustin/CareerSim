@@ -13,7 +13,7 @@ const statusIcons = {
 
 const statusColors = {
   scheduled: 'text-beaver',
-  'in-progress': 'text-primary',
+  'in-progress': 'text-gunmetal',
   completed: 'text-gunmetal',
 };
 
@@ -53,7 +53,7 @@ export default function InterviewList() {
     if (interview.status === 'completed') {
       navigate(`/report/${interview.id}`);
     } else {
-      navigate(`/interview/${interview.id}`);
+      navigate(`/interview/${interview.id}/chats`);
     }
   };
 
@@ -72,7 +72,7 @@ export default function InterviewList() {
         <div className="mb-8">
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-gunmetal hover:text-primary mb-4 transition-smooth"
+            className="flex items-center gap-2 text-gunmetal hover:text-gunmetal/80 mb-4 transition-smooth"
           >
             <ArrowLeft className="w-5 h-5" />
             <span>返回日曆</span>
@@ -87,7 +87,7 @@ export default function InterviewList() {
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg transition-smooth ${
               filter === 'all'
-                ? 'bg-primary text-white'
+                ? 'bg-gunmetal text-white'
                 : 'bg-white text-gunmetal hover:bg-white-smoke'
             }`}
           >
@@ -97,7 +97,7 @@ export default function InterviewList() {
             onClick={() => setFilter('scheduled')}
             className={`px-4 py-2 rounded-lg transition-smooth ${
               filter === 'scheduled'
-                ? 'bg-primary text-white'
+                ? 'bg-gunmetal text-white'
                 : 'bg-white text-gunmetal hover:bg-white-smoke'
             }`}
           >
@@ -107,7 +107,7 @@ export default function InterviewList() {
             onClick={() => setFilter('in-progress')}
             className={`px-4 py-2 rounded-lg transition-smooth ${
               filter === 'in-progress'
-                ? 'bg-primary text-white'
+                ? 'bg-gunmetal text-white'
                 : 'bg-white text-gunmetal hover:bg-white-smoke'
             }`}
           >
@@ -117,7 +117,7 @@ export default function InterviewList() {
             onClick={() => setFilter('completed')}
             className={`px-4 py-2 rounded-lg transition-smooth ${
               filter === 'completed'
-                ? 'bg-primary text-white'
+                ? 'bg-gunmetal text-white'
                 : 'bg-white text-gunmetal hover:bg-white-smoke'
             }`}
           >
@@ -127,7 +127,7 @@ export default function InterviewList() {
 
         {/* List */}
         {filteredInterviews.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-md p-12 text-center">
+          <div className="bg-white rounded-lg shadow-sm border border-white-smoke p-12 text-center">
             <div className="text-6xl mb-4">📋</div>
             <h3 className="text-xl font-semibold text-gunmetal mb-2">暫無面試</h3>
             <p className="text-gunmetal/70 mb-6">
@@ -138,7 +138,7 @@ export default function InterviewList() {
             {filter === 'all' && (
               <button
                 onClick={() => navigate('/dashboard')}
-                className="bg-primary text-white px-6 py-3 rounded-xl shadow-md hover:brightness-110 transition-smooth"
+                className="bg-gunmetal text-white px-6 py-3 rounded-lg shadow-sm hover:bg-black transition-smooth font-medium"
               >
                 建立面試
               </button>
@@ -152,7 +152,7 @@ export default function InterviewList() {
                 <div
                   key={interview.id}
                   onClick={() => handleInterviewClick(interview)}
-                  className="bg-white rounded-xl shadow-md p-6 cursor-pointer transition-smooth hover:shadow-lg hover:scale-[1.01] animate-fade-in"
+                  className="bg-white rounded-lg shadow-sm border border-white-smoke p-6 cursor-pointer transition-smooth hover:shadow-md hover:border-beaver/30 animate-fade-in"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -161,7 +161,7 @@ export default function InterviewList() {
                         <h3 className="text-lg font-semibold text-gunmetal">{interview.title}</h3>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                           interview.status === 'scheduled' ? 'bg-beaver/20 text-walnut' :
-                          interview.status === 'in-progress' ? 'bg-primary/20 text-primary' :
+                          interview.status === 'in-progress' ? 'bg-gunmetal/15 text-gunmetal' :
                           'bg-gunmetal/20 text-gunmetal'
                         }`}>
                           {statusLabels[interview.status]}

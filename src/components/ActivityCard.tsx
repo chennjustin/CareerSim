@@ -8,9 +8,9 @@ interface ActivityCardProps {
 }
 
 const statusColors = {
-  scheduled: 'bg-beaver/20 text-walnut',
-  'in-progress': 'bg-primary/20 text-primary',
-  completed: 'bg-gunmetal/20 text-gunmetal',
+  scheduled: 'bg-beaver/15 text-walnut',
+  'in-progress': 'bg-gunmetal/15 text-gunmetal',
+  completed: 'bg-gunmetal/10 text-gunmetal/70',
 };
 
 const statusLabels = {
@@ -29,7 +29,7 @@ export default function ActivityCard({ interview }: ActivityCardProps) {
   return (
     <div
       onClick={handleClick}
-      className="bg-white rounded-xl shadow-md p-6 cursor-pointer transition-smooth hover:shadow-lg hover:scale-[1.02] animate-fade-in"
+      className="bg-white rounded-lg shadow-sm border border-white-smoke p-6 cursor-pointer transition-smooth hover:shadow-md hover:border-beaver/30 animate-fade-in"
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">

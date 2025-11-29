@@ -16,6 +16,12 @@ export const mockInterviews: Interview[] = [
     status: 'completed',
     createdAt: '2024-01-10T10:00:00Z',
     completedAt: '2024-01-15T14:30:00Z',
+    chats: [
+      {
+        id: '1-chat-1',
+        title: '模擬面試一',
+        createdAt: '2024-01-10T10:00:00Z',
+        updatedAt: '2024-01-15T14:03:00Z',
     messages: [
       {
         id: 'm1',
@@ -40,6 +46,8 @@ export const mockInterviews: Interview[] = [
         role: 'user',
         content: '在開發一個電商平台時，我遇到了效能優化的問題。透過程式碼分析和資料庫優化，最終將頁面載入時間減少了50%。',
         timestamp: '2024-01-15T14:03:00Z',
+          },
+        ],
       },
     ],
   },
@@ -51,6 +59,15 @@ export const mockInterviews: Interview[] = [
     time: '10:00',
     status: 'scheduled',
     createdAt: '2024-01-12T09:00:00Z',
+    chats: [
+      {
+        id: '2-chat-1',
+        title: '預備練習',
+        createdAt: '2024-01-12T09:00:00Z',
+        updatedAt: '2024-01-12T09:00:00Z',
+        messages: [],
+      },
+    ],
   },
   {
     id: '3',
@@ -60,12 +77,20 @@ export const mockInterviews: Interview[] = [
     time: '15:30',
     status: 'in-progress',
     createdAt: '2024-01-13T11:00:00Z',
+    chats: [
+      {
+        id: '3-chat-1',
+        title: '技術練習',
+        createdAt: '2024-01-13T11:00:00Z',
+        updatedAt: '2024-01-18T15:30:00Z',
     messages: [
       {
         id: 'm5',
         role: 'interviewer',
         content: '請解釋一下 React Hooks 的工作原理。',
         timestamp: '2024-01-18T15:30:00Z',
+          },
+        ],
       },
     ],
   },

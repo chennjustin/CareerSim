@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useAuth } from './contexts/AuthContext';
 import Dashboard from './pages/Dashboard';
 import InterviewRoom from './pages/InterviewRoom';
+import InterviewChats from './pages/InterviewChats';
 import InterviewReport from './pages/InterviewReport';
 import InterviewList from './pages/InterviewList';
 import Login from './pages/Login';
@@ -47,10 +48,34 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/interview/:id"
+        path="/interview/:id/chats"
+        element={
+          <ProtectedRoute>
+            <InterviewChats />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/interview/:id/new-chat"
         element={
           <ProtectedRoute>
             <InterviewRoom />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/interview/:id/chat/:chatId"
+        element={
+          <ProtectedRoute>
+            <InterviewRoom />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/interview/:id"
+        element={
+          <ProtectedRoute>
+            <Navigate to="/dashboard" replace />
           </ProtectedRoute>
         }
       />
