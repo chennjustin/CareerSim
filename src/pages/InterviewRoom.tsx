@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Mic, Settings, Plus, Edit2, Check, X } from 'lucide-react';
+import { ArrowLeft, Send, Mic, Settings, Edit2, Check, X } from 'lucide-react';
 import { ChatSession, Interview, Message, AIPersonality } from '../types';
 import { api } from '../api/mockApi';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 
 const aiPersonalities = {
   friendly: {
@@ -36,7 +36,7 @@ export default function InterviewRoom() {
   const { id, chatId } = useParams<{ id: string; chatId?: string }>();
   const navigate = useNavigate();
   const [interview, setInterview] = useState<Interview | null>(null);
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [, setChatSessions] = useState<ChatSession[]>([]);
   const [activeChat, setActiveChat] = useState<ChatSession | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [personality, setPersonality] = useState<AIPersonality>('friendly');
@@ -211,7 +211,8 @@ export default function InterviewRoom() {
             appendMessageToChat(chatId, savedAIMessage);
           // Don't auto-complete interviews - only set to in-progress if scheduled
           // Interviews should only be marked as completed when their date/time passes
-          if (interview.status === 'scheduled') {
+          const currentInterview = interview;
+          if (currentInterview && currentInterview.status === 'scheduled') {
             await api.updateInterview(id, { status: 'in-progress' });
             setInterview((prev) => (prev ? { ...prev, status: 'in-progress' } : prev));
           }

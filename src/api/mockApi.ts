@@ -123,7 +123,7 @@ export const api = {
     return getStoredInterviews().find(i => i.id === id) || null;
   },
 
-  createInterview: async (interview: Omit<Interview, 'id' | 'createdAt'>): Promise<Interview> => {
+  createInterview: async (interview: Omit<Interview, 'id' | 'createdAt' | 'chats'>): Promise<Interview> => {
     await delay(500);
     const newInterview: Interview = {
       ...interview,
