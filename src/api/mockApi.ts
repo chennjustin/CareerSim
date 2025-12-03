@@ -1,5 +1,6 @@
 import { ChatSession, Interview, Report, User, Message } from '../types';
 import { mockInterviews, mockReports, mockUser } from '../data/mockData';
+import { generateInterviewReport } from './llmApi';
 
 // 模拟 API 延迟
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -224,36 +225,61 @@ export const api = {
   },
 
   generateReport: async (interviewId: string, chatId?: string): Promise<Report> => {
-    await delay(1500); // 模拟生成报告的時間
     const interviews = getStoredInterviews();
     const interview = interviews.find(i => i.id === interviewId);
     if (!interview) throw new Error('Interview not found');
 
-    // 简单的模拟报告生成逻辑
+    // 获取对话历史
+    let conversationHistory: Message[] = [];
+    if (chatId) {
+      const chat = interview.chats.find(c => c.id === chatId);
+      if (chat) {
+        conversationHistory = chat.messages;
+      }
+    } else {
+      // 如果没有指定 chatId，使用第一个有消息的聊天
+      const firstChatWithMessages = interview.chats.find(c => c.messages && c.messages.length > 0);
+      if (firstChatWithMessages) {
+        conversationHistory = firstChatWithMessages.messages;
+      }
+    }
+
+    // 使用 ChatGPT 生成报告
+    let reportData;
+    try {
+      reportData = await generateInterviewReport(conversationHistory, interview.type);
+    } catch (error) {
+      console.error('Failed to generate report with ChatGPT, using fallback:', error);
+      // 如果 ChatGPT 失败，使用默认报告
+      reportData = {
+        overallScore: 75,
+        expression: 75,
+        content: 75,
+        structure: 75,
+        language: 75,
+        strengths: [
+          '回答結構清晰，邏輯性強',
+          '能夠提供具體的專案案例',
+          '語言表達流暢自然',
+        ],
+        improvements: [
+          '可以更詳細地解釋技術細節',
+          '建議增加對問題背後原理的深入分析',
+          '可以準備更多量化的成果資料',
+        ],
+        recommendations: [
+          '繼續練習 STAR 方法回答行為問題',
+          '準備更多技術深度問題的回答',
+          '練習在壓力下的快速思考能力',
+        ],
+      };
+    }
+
     const newReport: Report = {
       id: Date.now().toString(),
       interviewId,
       chatId,
-      overallScore: Math.floor(Math.random() * 20) + 75, // 75-95
-      expression: Math.floor(Math.random() * 20) + 75,
-      content: Math.floor(Math.random() * 20) + 75,
-      structure: Math.floor(Math.random() * 20) + 75,
-      language: Math.floor(Math.random() * 20) + 75,
-      strengths: [
-        '回答結構清晰，邏輯性強',
-        '能夠提供具體的專案案例',
-        '語言表達流暢自然',
-      ],
-      improvements: [
-        '可以更詳細地解釋技術細節',
-        '建議增加對問題背後原理的深入分析',
-        '可以準備更多量化的成果資料',
-      ],
-      recommendations: [
-        '繼續練習 STAR 方法回答行為問題',
-        '準備更多技術深度問題的回答',
-        '練習在壓力下的快速思考能力',
-      ],
+      ...reportData,
       createdAt: new Date().toISOString(),
     };
 

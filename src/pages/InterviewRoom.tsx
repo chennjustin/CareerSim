@@ -3,34 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, Mic, Settings, Edit2, Check, X } from 'lucide-react';
 import { ChatSession, Interview, Message, AIPersonality } from '../types';
 import { api } from '../api/mockApi';
+import { callChatGPT, generateFirstQuestion } from '../api/llmApi';
 import { format } from 'date-fns';
-
-const aiPersonalities = {
-  friendly: {
-    name: '友善',
-    responses: [
-      '很好！讓我們繼續下一個問題。',
-      '不錯的回答，能再詳細說說嗎？',
-      '我理解您的想法，這是一個很好的觀點。',
-    ],
-  },
-  formal: {
-    name: '正式',
-    responses: [
-      '請詳細闡述您的觀點。',
-      '請提供具體的案例來支持您的回答。',
-      '請繼續您的回答。',
-    ],
-  },
-  'stress-test': {
-    name: '壓力測試',
-    responses: [
-      '這個回答還不夠充分，請再想想。',
-      '您能提供更有說服力的證據嗎？',
-      '如果這是真實面試，您覺得這個回答足夠好嗎？',
-    ],
-  },
-};
 
 export default function InterviewRoom() {
   const { id, chatId } = useParams<{ id: string; chatId?: string }>();
@@ -108,11 +82,11 @@ export default function InterviewRoom() {
   };
 
   const sendFirstQuestion = async (chatId: string) => {
-    if (!id) return;
-    const firstQuestion =
-      '您好，歡迎參加這次模擬面試。請先簡單介紹一下您自己。';
+    if (!id || !interview) return;
     setIsLoading(true);
     try {
+      // 使用 ChatGPT 生成第一个问题
+      const firstQuestion = await generateFirstQuestion(interview.type, personality);
       const newMessage = await api.addMessage(id, chatId, {
         role: 'interviewer',
         content: firstQuestion,
@@ -122,6 +96,13 @@ export default function InterviewRoom() {
       setInterview((prev) => (prev ? { ...prev, status: 'in-progress' } : prev));
     } catch (error) {
       console.error('Failed to send first question:', error);
+      // 如果 API 失败，使用默认问题
+      const defaultQuestion = '您好，歡迎參加這次模擬面試。請先簡單介紹一下您自己。';
+      const newMessage = await api.addMessage(id, chatId, {
+        role: 'interviewer',
+        content: defaultQuestion,
+      });
+      appendMessageToChat(chatId, newMessage);
     } finally {
       setIsLoading(false);
     }
@@ -167,29 +148,15 @@ export default function InterviewRoom() {
     loadInterview();
   }, [id]);
 
-  const generateAIResponse = (_userMessage: string, currentQuestionCount: number): string => {
-    const responses = aiPersonalities[personality].responses;
-    const questions = [
-      '請描述一下您在團隊合作中遇到的最大挑戰。',
-      '您如何平衡多個專案的優先順序？',
-      '請分享一個您解決複雜技術問題的例子。',
-      '您認為自己最大的優勢是什麼？',
-      '您如何處理工作中的壓力？',
-    ];
-
-    if (currentQuestionCount < questions.length) {
-      return questions[currentQuestionCount];
-    } else {
-      return responses[Math.floor(Math.random() * responses.length)];
-    }
-  };
+  // 此函数已不再使用，保留用于向后兼容
+  // const generateAIResponse = (_userMessage: string, currentQuestionCount: number): string => {
+  //   // 已迁移到 callChatGPT
+  // };
 
   const handleSend = async () => {
-    if (!inputValue.trim() || !id || !activeChat) return;
+    if (!inputValue.trim() || !id || !activeChat || !interview) return;
     const chatId = activeChat.id;
     const text = inputValue.trim();
-    const previousQuestionCount = activeChat.messages.filter((message) => message.role === 'interviewer')
-      .length;
     setInputValue('');
     setIsLoading(true);
 
@@ -199,30 +166,44 @@ export default function InterviewRoom() {
         content: text,
       });
       appendMessageToChat(chatId, savedUserMessage);
-      setTimeout(() => {
-        (async () => {
-          try {
-            const newCount = previousQuestionCount + 1;
-            const aiResponse = generateAIResponse(text, newCount);
-            const savedAIMessage = await api.addMessage(id, chatId, {
-              role: 'interviewer',
-              content: aiResponse,
-            });
-            appendMessageToChat(chatId, savedAIMessage);
-          // Don't auto-complete interviews - only set to in-progress if scheduled
-          // Interviews should only be marked as completed when their date/time passes
-          const currentInterview = interview;
-          if (currentInterview && currentInterview.status === 'scheduled') {
-            await api.updateInterview(id, { status: 'in-progress' });
-            setInterview((prev) => (prev ? { ...prev, status: 'in-progress' } : prev));
-          }
-          } catch (error) {
-            console.error('Failed to generate AI response:', error);
-          } finally {
-            setIsLoading(false);
-          }
-        })();
-      }, 1000);
+      // 使用 ChatGPT 生成 AI 响应
+      try {
+        // 获取当前对话历史（不包括刚发送的用户消息）
+        const conversationHistory = activeChat.messages;
+        
+        // 调用 ChatGPT API
+        const aiResponse = await callChatGPT(
+          conversationHistory,
+          personality,
+          interview.type,
+          text
+        );
+        
+        const savedAIMessage = await api.addMessage(id, chatId, {
+          role: 'interviewer',
+          content: aiResponse,
+        });
+        appendMessageToChat(chatId, savedAIMessage);
+        
+        // Don't auto-complete interviews - only set to in-progress if scheduled
+        // Interviews should only be marked as completed when their date/time passes
+        const currentInterview = interview;
+        if (currentInterview && currentInterview.status === 'scheduled') {
+          await api.updateInterview(id, { status: 'in-progress' });
+          setInterview((prev) => (prev ? { ...prev, status: 'in-progress' } : prev));
+        }
+      } catch (error) {
+        console.error('Failed to generate AI response:', error);
+        // 如果 API 失败，显示错误消息
+        const errorMessage = '抱歉，AI 回應生成失敗，請稍後再試。';
+        const savedAIMessage = await api.addMessage(id, chatId, {
+          role: 'interviewer',
+          content: errorMessage,
+        });
+        appendMessageToChat(chatId, savedAIMessage);
+      } finally {
+        setIsLoading(false);
+      }
     } catch (error) {
       console.error('Failed to send user message:', error);
         setIsLoading(false);
