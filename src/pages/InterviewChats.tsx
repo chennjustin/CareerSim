@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, FileText, Edit2, Check, X } from 'lucide-react';
 import { Interview, Report } from '../types';
-import { api } from '../api/mockApi';
+import { useApi } from '../api/api';
 import { format, formatDistanceToNow } from 'date-fns';
 
 export default function InterviewChats() {
+  const api = useApi();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [interview, setInterview] = useState<Interview | null>(null);

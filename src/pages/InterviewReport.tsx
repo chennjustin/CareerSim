@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, RotateCcw, Calendar } from 'lucide-react';
 import { Report, Interview } from '../types';
-import { api } from '../api/mockApi';
+import { useApi } from '../api/api';
 import { format } from 'date-fns';
+import { exportReportToPDF } from '../utils/pdfExport';
 
 interface ScoreCircleProps {
   score: number;
@@ -50,6 +51,7 @@ function ScoreCircle({ score, label, size = 80 }: ScoreCircleProps) {
 }
 
 export default function InterviewReport() {
+  const api = useApi();
   const { interviewId } = useParams<{ interviewId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -80,34 +82,66 @@ export default function InterviewReport() {
         if (chatId) {
           const chat = interviewData.chats.find(c => c.id === chatId);
           const interviewerCount = chat?.messages.filter(m => m.role === 'interviewer').length || 0;
+          const totalMessages = chat?.messages.length || 0;
           
-          if (interviewerCount >= 5) {
+          if (interviewerCount >= 5 && totalMessages > 0) {
             // 如果沒有報告，產生一個
-            setGenerating(true);
-            const newReport = await api.generateReport(interviewId, chatId);
-            setReport(newReport);
-            setGenerating(false);
+            try {
+              setGenerating(true);
+              const newReport = await api.generateReport(interviewId, chatId);
+              setReport(newReport);
+            } catch (error) {
+              console.error('生成報告失敗:', error);
+              alert('生成報告時發生錯誤，請稍後再試。\n\n錯誤訊息: ' + (error instanceof Error ? error.message : '未知錯誤'));
+            } finally {
+              setGenerating(false);
+            }
+          } else {
+            // 消息不足，显示提示
+            alert('對話內容不足，無法生成報告。\n\n需要至少 5 個面試官問題才能生成報告。');
           }
         } else {
           // Generate report for interview
-          setGenerating(true);
-          const newReport = await api.generateReport(interviewId);
-          setReport(newReport);
-          setGenerating(false);
+          try {
+            setGenerating(true);
+            const newReport = await api.generateReport(interviewId);
+            setReport(newReport);
+          } catch (error) {
+            console.error('生成報告失敗:', error);
+            alert('生成報告時發生錯誤，請稍後再試。\n\n錯誤訊息: ' + (error instanceof Error ? error.message : '未知錯誤'));
+          } finally {
+            setGenerating(false);
+          }
         }
       } else {
         setReport(reportData);
       }
     } catch (error) {
       console.error('Failed to load report:', error);
+      alert('載入報告時發生錯誤: ' + (error instanceof Error ? error.message : '未知錯誤'));
     } finally {
       setLoading(false);
+      setGenerating(false);
     }
   };
 
-  const handleExportPDF = () => {
-    // 模擬 PDF 匯出
-    alert('PDF 匯出功能將在後續版本中實作');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!report || !interview) {
+      alert('無法匯出 PDF：報告或面試資訊缺失');
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      await exportReportToPDF(report, interview, chatId);
+    } catch (error) {
+      console.error('PDF 匯出失敗:', error);
+      alert('PDF 匯出時發生錯誤，請稍後再試。\n\n錯誤訊息: ' + (error instanceof Error ? error.message : '未知錯誤'));
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (loading || generating) {
@@ -222,10 +256,20 @@ export default function InterviewReport() {
         <div className="flex flex-wrap gap-4 justify-center animate-slide-up">
           <button
             onClick={handleExportPDF}
-            className="flex items-center gap-2 bg-white text-gunmetal px-6 py-3 rounded-lg shadow-sm hover:shadow-md transition-smooth border border-white-smoke font-medium"
+            disabled={isExporting}
+            className="flex items-center gap-2 bg-white text-gunmetal px-6 py-3 rounded-lg shadow-sm hover:shadow-md transition-smooth border border-white-smoke font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="w-5 h-5" />
-            <span>匯出 PDF</span>
+            {isExporting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-gunmetal border-t-transparent rounded-full animate-spin"></div>
+                <span>匯出中...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5" />
+                <span>匯出 PDF</span>
+              </>
+            )}
           </button>
           <button
             onClick={async () => {

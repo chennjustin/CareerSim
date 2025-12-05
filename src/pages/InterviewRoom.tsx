@@ -2,11 +2,65 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, Mic, Settings, Edit2, Check, X } from 'lucide-react';
 import { ChatSession, Interview, Message, AIPersonality } from '../types';
-import { api } from '../api/mockApi';
+import { useApi } from '../api/api';
 import { callChatGPT, generateFirstQuestion } from '../api/llmApi';
 import { format } from 'date-fns';
 
+// Web Speech API 类型定义
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: {
+      new (): SpeechRecognition;
+    };
+    webkitSpeechRecognition: {
+      new (): SpeechRecognition;
+    };
+  }
+}
+
 export default function InterviewRoom() {
+  const api = useApi();
   const { id, chatId } = useParams<{ id: string; chatId?: string }>();
   const navigate = useNavigate();
   const [interview, setInterview] = useState<Interview | null>(null);
@@ -20,6 +74,10 @@ export default function InterviewRoom() {
   const [editingTitle, setEditingTitle] = useState('');
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
+  
+  // 语音识别相关状态
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const activeMessages = activeChat?.messages ?? [];
   const interviewerCount = activeMessages.filter((message) => message.role === 'interviewer')
@@ -128,7 +186,7 @@ export default function InterviewRoom() {
           sendFirstQuestion(newChat.id);
         } else if (chatId) {
           // Load specific chat
-          const chat = data.chats.find(c => c.id === chatId);
+          const chat = data.chats.find((c: ChatSession) => c.id === chatId);
           if (chat) {
             setActiveChat(chat);
             if (chat.messages.length === 0 && data.status !== 'completed') {
@@ -147,6 +205,70 @@ export default function InterviewRoom() {
   useEffect(() => {
     loadInterview();
   }, [id]);
+
+  // 初始化语音识别
+  useEffect(() => {
+    // 检查浏览器是否支持语音识别
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      console.warn('您的瀏覽器不支持語音識別功能');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false; // 单次识别
+    recognition.interimResults = false; // 不返回中间结果
+    recognition.lang = 'zh-TW'; // 设置为繁体中文
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0].transcript)
+        .join('')
+        .trim();
+      
+      if (transcript) {
+        // 将识别结果填入输入框（追加到现有内容）
+        setInputValue((prev) => {
+          const trimmedPrev = prev.trim();
+          return trimmedPrev ? `${trimmedPrev} ${transcript}` : transcript;
+        });
+      }
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('語音識別錯誤:', event.error);
+      setIsListening(false);
+      
+      // 显示错误提示
+      if (event.error === 'no-speech') {
+        // 没有检测到语音，不显示错误
+        return;
+      } else if (event.error === 'not-allowed') {
+        alert('請允許瀏覽器使用麥克風權限');
+      } else {
+        alert('語音識別失敗，請重試');
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+
+    // 清理函数
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   // 此函数已不再使用，保留用于向后兼容
   // const generateAIResponse = (_userMessage: string, currentQuestionCount: number): string => {
@@ -210,6 +332,41 @@ export default function InterviewRoom() {
     }
   };
 
+  // 处理语音输入
+  const handleVoiceInput = () => {
+    if (!recognitionRef.current) {
+      alert('您的瀏覽器不支持語音識別功能。請使用 Chrome、Edge 或 Safari 瀏覽器。');
+      return;
+    }
+
+    if (isListening) {
+      // 停止录音
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.error('停止語音識別失敗:', error);
+        setIsListening(false);
+      }
+    } else {
+      // 开始录音
+      try {
+        recognitionRef.current.start();
+      } catch (error: any) {
+        console.error('啟動語音識別失敗:', error);
+        setIsListening(false);
+        
+        // 更详细的错误提示
+        if (error.name === 'NotAllowedError' || error.message?.includes('permission')) {
+          alert('請允許瀏覽器使用麥克風權限。\n\n在瀏覽器地址欄左側點擊鎖定圖標，然後允許麥克風權限。');
+        } else if (error.name === 'NotFoundError' || error.message?.includes('microphone')) {
+          alert('未檢測到麥克風設備，請檢查您的麥克風連接。');
+        } else {
+          alert('無法啟動語音識別，請稍後再試。\n\n如果問題持續，請檢查瀏覽器設置中的麥克風權限。');
+        }
+      }
+    }
+  };
+
   const handleFinish = async () => {
     if (!id || !chatId) return;
     try {
@@ -236,7 +393,7 @@ export default function InterviewRoom() {
       const updatedInterview = await api.getInterview(id);
       if (updatedInterview) {
         setInterview(updatedInterview);
-        const updatedChat = updatedInterview.chats.find(c => c.id === chatId);
+        const updatedChat = updatedInterview.chats.find((c: ChatSession) => c.id === chatId);
         if (updatedChat) {
           setActiveChat(updatedChat);
         }
@@ -414,6 +571,18 @@ export default function InterviewRoom() {
               </div>
             </div>
           )}
+
+          {isListening && (
+            <div className="flex gap-4 animate-slide-up">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+              </div>
+              <div className="bg-red-50 rounded-lg px-4 py-3 shadow-sm border border-red-200">
+                <p className="text-sm text-red-700 font-medium">🎤 正在錄音中...</p>
+                <p className="text-xs text-red-600 mt-1">點擊麥克風圖標停止錄音</p>
+              </div>
+            </div>
+          )}
           </div>
 
           {/* Input Area - Fixed at bottom */}
@@ -444,7 +613,16 @@ export default function InterviewRoom() {
                   rows={1}
                   style={{ minHeight: '48px', maxHeight: '120px' }}
                 />
-                <button className="absolute right-3 bottom-3 p-2 text-gunmetal/50 hover:text-gunmetal transition-smooth">
+                <button
+                  onClick={handleVoiceInput}
+                  disabled={isLoading}
+                  className={`absolute right-3 bottom-3 p-2 transition-smooth ${
+                    isListening
+                      ? 'text-red-500 animate-pulse'
+                      : 'text-gunmetal/50 hover:text-gunmetal'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  title={isListening ? '正在錄音，點擊停止' : '語音輸入'}
+                >
                   <Mic className="w-5 h-5" />
                 </button>
               </div>

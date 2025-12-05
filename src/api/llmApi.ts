@@ -248,8 +248,21 @@ ${conversationSummary}
     let reportJson = reportText.trim();
     // 移除可能的 markdown 代码块标记
     reportJson = reportJson.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    // 尝试提取 JSON 对象（如果文本中包含其他内容）
+    const jsonMatch = reportJson.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      reportJson = jsonMatch[0];
+    }
 
-    const report = JSON.parse(reportJson);
+    let report;
+    try {
+      report = JSON.parse(reportJson);
+    } catch (parseError) {
+      console.error('JSON 解析失敗:', parseError);
+      console.error('原始文本:', reportText);
+      throw new Error('無法解析 ChatGPT 返回的 JSON 格式');
+    }
 
     // 验证和规范化数据
     return {

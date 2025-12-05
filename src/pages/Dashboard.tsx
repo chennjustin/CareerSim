@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Calendar as CalendarIcon, List, CalendarDays, Check } from 'lucide-react';
 import { Interview, ViewMode } from '../types';
-import { api } from '../api/mockApi';
+import { useApi } from '../api/api';
 import ActivityCard from '../components/ActivityCard';
 import NewActivityForm from '../components/NewActivityForm';
 import UserMenu from '../components/UserMenu';
@@ -17,6 +17,7 @@ interface DashboardTodo {
 }
 
 export default function Dashboard() {
+  const api = useApi();
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [isFormOpen, setIsFormOpen] = useState(false);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, CheckCircle, Circle, PlayCircle } from 'lucide-react';
 import { Interview } from '../types';
-import { api } from '../api/mockApi';
+import { useApi } from '../api/api';
 import { format } from 'date-fns';
 
 const statusIcons = {
@@ -24,6 +24,7 @@ const statusLabels = {
 };
 
 export default function InterviewList() {
+  const api = useApi();
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | Interview['status']>('all');

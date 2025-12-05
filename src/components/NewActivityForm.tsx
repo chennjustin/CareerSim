@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Interview } from '../types';
-import { api } from '../api/mockApi';
+import { useApi } from '../api/api';
 
 interface NewActivityFormProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ const defaultFormData = {
 };
 
 export default function NewActivityForm({ isOpen, onClose, onSubmit, initialDate }: NewActivityFormProps) {
+  const api = useApi();
   const [formData, setFormData] = useState(defaultFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
