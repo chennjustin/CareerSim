@@ -74,15 +74,17 @@ export default function InterviewRoom() {
   const [editingTitle, setEditingTitle] = useState('');
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
-  
+  const [interviewEnded, setInterviewEnded] = useState(false);
+
+  // IME and enter key control states:
+  const [isComposing, setIsComposing] = useState(false);
+  const enterCountRef = useRef<number>(0);
+
   // 语音识别相关状态
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const activeMessages = activeChat?.messages ?? [];
-  const interviewerCount = activeMessages.filter((message) => message.role === 'interviewer')
-    .length;
-  const isFinished = interviewerCount >= 5;
 
   // Check if user is at bottom of scroll
   const checkScrollPosition = () => {
@@ -117,6 +119,33 @@ export default function InterviewRoom() {
       });
     }
   }, [activeChat?.id]);
+
+  // In useEffect, add a timer for auto-end after 5 minutes
+  useEffect(() => {
+    if (!activeChat || !activeChat.createdAt || interviewEnded) return;
+    const createdAt = new Date(activeChat.createdAt).getTime();
+    const now = Date.now();
+    const msLeft = Math.max(0, createdAt + 5 * 60 * 1000 - now);
+    if (msLeft === 0) {
+      // already timeout
+      setInterviewEnded(true);
+      // Optionally only insert end message if not present
+      if (!activeMessages.some(m => m.content.includes('面試時間已到'))) {
+        const timeoutMsg = '面試時間已到，自動結束本次面試，請檢視面試報告。';
+        api.addMessage(id!, activeChat.id, { role: 'interviewer', content: timeoutMsg }).then(msg => appendMessageToChat(activeChat.id, msg));
+      }
+      return;
+    }
+    const timer = setTimeout(() => {
+      setInterviewEnded(true);
+      if (!activeMessages.some(m => m.content.includes('面試時間已到'))) {
+        const timeoutMsg = '面試時間已到，自動結束本次面試，請檢視面試報告。';
+        api.addMessage(id!, activeChat.id, { role: 'interviewer', content: timeoutMsg }).then(msg => appendMessageToChat(activeChat.id, msg));
+      }
+    }, msLeft);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeChat?.id, activeChat?.createdAt, interviewEnded]);
 
   const appendMessageToChat = (chatId: string, message: Message) => {
     setChatSessions((prev) => {
@@ -276,10 +305,12 @@ export default function InterviewRoom() {
   // };
 
   const handleSend = async () => {
-    if (!inputValue.trim() || !id || !activeChat || !interview) return;
+    if (interviewEnded || !inputValue.trim() || !id || !activeChat || !interview) return;
+    if (interviewEnded || !inputValue.trim() || !id || !activeChat || !interview) return;
     const chatId = activeChat.id;
     const text = inputValue.trim();
     setInputValue('');
+    enterCountRef.current = 0;
     setIsLoading(true);
 
     try {
@@ -301,11 +332,24 @@ export default function InterviewRoom() {
           text
         );
         
-        const savedAIMessage = await api.addMessage(id, chatId, {
-          role: 'interviewer',
-          content: aiResponse,
-        });
-        appendMessageToChat(chatId, savedAIMessage);
+        let parsed: any = undefined;
+        try { parsed = JSON.parse(aiResponse); } catch {}
+        if (parsed && parsed.report) {
+          // End-of-interview logic
+          const endMsg = '此場面試已結束，感謝您的參與！請點下方按鈕檢視面試報告。';
+          const endAIMessage = await api.addMessage(id, chatId, {
+            role: 'interviewer',
+            content: endMsg,
+          });
+          appendMessageToChat(chatId, endAIMessage);
+          setInterviewEnded(true);
+        } else {
+          const savedAIMessage = await api.addMessage(id, chatId, {
+            role: 'interviewer',
+            content: aiResponse,
+          });
+          appendMessageToChat(chatId, savedAIMessage);
+        }
         
         // Don't auto-complete interviews - only set to in-progress if scheduled
         // Interviews should only be marked as completed when their date/time passes
@@ -516,7 +560,6 @@ export default function InterviewRoom() {
             <div className="text-center text-gunmetal/70 py-16 space-y-2">
               <div className="text-6xl">💬</div>
               <p className="text-lg font-semibold">準備開始，握好麥克風！</p>
-              <p className="text-sm">輸入回應後，AI 面試官會開始提問。</p>
             </div>
           ) : (
             <div className="space-y-6">
@@ -587,7 +630,7 @@ export default function InterviewRoom() {
 
           {/* Input Area - Fixed at bottom */}
           <div className="flex-shrink-0 border-t border-white-smoke bg-white px-6 py-4 rounded-b-lg">
-          {isFinished ? (
+          {interviewEnded ? (
             <div className="flex justify-center">
               <button
                 onClick={handleFinish}
@@ -602,20 +645,33 @@ export default function InterviewRoom() {
                 <textarea
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => { setIsComposing(false); enterCountRef.current = 0; }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
+                      if (isComposing) {
+                        if (enterCountRef.current === 1) {
+                          e.preventDefault();
+                          handleSend();
+                          enterCountRef.current = 0;
+                        } else {
+                          enterCountRef.current = 1;
+                        }
+                      } else {
+                        e.preventDefault();
+                        handleSend();
+                      }
                     }
                   }}
                   placeholder="輸入您的回答..."
                   className="w-full px-4 py-3 pr-12 border border-white-smoke rounded-lg focus:outline-none focus:ring-2 focus:ring-gunmetal/20 focus:border-gunmetal/30 resize-none bg-white"
                   rows={1}
                   style={{ minHeight: '48px', maxHeight: '120px' }}
+                  disabled={isLoading || interviewEnded}
                 />
                 <button
                   onClick={handleVoiceInput}
-                  disabled={isLoading}
+                  disabled={isLoading || interviewEnded}
                   className={`absolute right-3 bottom-3 p-2 transition-smooth ${
                     isListening
                       ? 'text-red-500 animate-pulse'
@@ -628,7 +684,7 @@ export default function InterviewRoom() {
               </div>
               <button
                 onClick={handleSend}
-                disabled={!inputValue.trim() || isLoading}
+                disabled={!inputValue.trim() || isLoading || interviewEnded}
                 className="p-3 bg-gunmetal text-white rounded-lg hover:bg-black transition-smooth disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
               >
                 <Send className="w-5 h-5" />
