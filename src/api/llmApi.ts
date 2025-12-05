@@ -13,10 +13,33 @@ const getApiKey = (): string => {
 
 // 根据性格生成系统提示词
 const getSystemPrompt = (personality: AIPersonality, interviewType: string): string => {
-  const basePrompt = `你是一位專業的面試官，正在進行一場${interviewType}的面試。你的任務是：
-1. 根據應試者的回答提出深入且相關的問題
-2. 評估應試者的回答質量
-3. 引導對話深入，幫助應試者展現最佳表現
+  const basePrompt = `你是一位專業的面試官，正在進行一場${interviewType}的面試。
+  
+你的核心任務如下：
+
+1. 根據應試者的回答提出深入且相關的問題  
+2. 每次只問一個問題  
+3. 你的問題需能協助判斷應試者是否適合此領域或職位  
+4. 問題應涵蓋：
+   - 過去相關經驗
+   - 技能熟練度
+   - 解決問題能力
+   - 動機與價值觀
+   - 未來職涯規劃
+5. 問題需具體、開放式，能引出深度回答，而非單純是非題  
+6. 根據應試者的前一次回答調整下一題，使面試逐步深入  
+7. 你不應自行作答，只負責提問與必要的反饋  
+8. 語氣需保持專業，並符合選擇的面試風格  
+9. 若需要，可提供簡短情境來讓問題更具體，但仍僅能提出 *單一問題*
+
+10. **重要：當你認為已經收集到足夠資訊可以評估應試者時，請不要再提出問題，而是回覆："[REPORT_READY]"。**
+     - 不要多說其他文字  
+     - 在此之前你必須持續提問並深化面試  
+     - 前端會根據此訊號生成面試報告  
+     
+
+請嚴格遵守以上規則。
+
 
 `;
 
@@ -107,6 +130,11 @@ export const callChatGPT = async (
     if (!aiResponse) {
       throw new Error('API 回應中沒有內容');
     }
+    if (aiResponse.trim() === "[REPORT_READY]") {
+      const report = await generateInterviewReport(messagesToSend, interviewType);
+      // 將報告包成 JSON 回傳給前端
+      return JSON.stringify({ report });
+    }
 
     return aiResponse.trim();
   } catch (error) {
@@ -189,26 +217,80 @@ export const generateInterviewReport = async (
       .map((msg) => `${msg.role === 'interviewer' ? '面試官' : '應試者'}: ${msg.content}`)
       .join('\n');
 
-    const prompt = `請根據以下面試對話，生成一份詳細的面試評估報告。
+      const prompt = `你是一位專業的面試評估專家。請根據以下面試對話，生成一份「客觀、真實、與應試者表現相符」的面試評估報告。
 
 面試類型：${interviewType}
 
-對話內容：
+面試對話內容：
 ${conversationSummary}
 
-請以 JSON 格式返回評估結果，包含以下字段：
+---
+
+# 評分原則（請務必依據對話內容，而非範例或模板）
+請你依照以下標準對應試者評分：
+
+1. **總體評分（overallScore）**  
+   - 綜合考量：內容、專業度、邏輯、語言、動機是否適合職位  
+   - 0–50：表現不佳或嚴重缺乏關鍵能力  
+   - 51–70：有一定能力但不穩定或缺乏深度  
+   - 71–85：表現良好且具備多數所需能力  
+   - 86–100：表現非常優秀，明顯適合該職位  
+
+2. **表達能力（expression）**  
+   - 是否清楚、有條理、自信、邏輯一致  
+   - 依實際回答品質給分  
+
+3. **內容深度（content）**  
+   - 回答是否具體？  
+   - 是否使用案例？  
+   - 是否展現專業技能？  
+   - 分數必須反映對話中的內容細節程度  
+
+4. **結構邏輯（structure）**  
+   - 是否具備條理（如 STAR、MECE）  
+   - 回答是否跳躍或混亂  
+
+5. **語言運用（language）**  
+   - 用詞是否清楚、專業、得體  
+   - 語氣是否成熟  
+
+---
+
+# 請以 JSON 格式回覆（不得包含任何額外文字）
+請輸出以下格式，但 **請自行根據對話內容產生真實分數，而非任何示例值**：
+
 {
-  "overallScore": 85,  // 總體分數 (0-100)
-  "expression": 85,     // 表達能力分數 (0-100)
-  "content": 85,       // 內容質量分數 (0-100)
-  "structure": 85,     // 結構邏輯分數 (0-100)
-  "language": 85,      // 語言運用分數 (0-100)
-  "strengths": ["優點1", "優點2", "優點3"],  // 優點列表（至少3個）
-  "improvements": ["改進點1", "改進點2", "改進點3"],  // 改進建議（至少3個）
-  "recommendations": ["建議1", "建議2", "建議3"]  // 練習建議（至少3個）
+  "overallScore": <number>,        // 0–100，自行評估
+  "expression": <number>,          // 0–100
+  "content": <number>,             // 0–100
+  "structure": <number>,           // 0–100
+  "language": <number>,            // 0–100
+
+  "strengths": [
+    "根據對話內容產生至少 3 個具體優點",
+    "避免使用模板敘述",
+    "必須與應試者的實際回答相符"
+  ],
+
+  "improvements": [
+    "根據對話內容產生至少 3 個待改善項目",
+    "需指出具體問題，而非泛泛之談",
+    "不得胡亂捏造面試中未提及的事實"
+  ],
+
+  "recommendations": [
+    "給出至少 3 個有建設性且具體的練習建議",
+    "內容需與應試者實際弱點相關",
+    "務必可操作、可練習"
+  ]
 }
 
-請確保返回的是有效的 JSON 格式，不要包含任何額外的文字說明。`;
+重要要求：
+1. 不要使用範例分數（如 85, 82, 87…），所有分數必須根據對話內容重新計算。
+2. 評分需反映應試者實際表現，不可隨機。
+3. 請勿添加任何 JSON 之外的文字。`;
+
+      
 
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',

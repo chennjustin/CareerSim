@@ -5,6 +5,7 @@ import { Report, Interview } from '../types';
 import { useApi } from '../api/api';
 import { format } from 'date-fns';
 import { exportReportToPDF } from '../utils/pdfExport';
+import { generateInterviewReport } from '../api/llmApi';
 
 interface ScoreCircleProps {
   score: number;
@@ -85,11 +86,19 @@ export default function InterviewReport() {
           const totalMessages = chat?.messages.length || 0;
           
           if (interviewerCount >= 5 && totalMessages > 0) {
-            // 如果沒有報告，產生一個
+            // 如果沒有報告，產生一個（優先使用 OpenAI LLM）
             try {
               setGenerating(true);
-              const newReport = await api.generateReport(interviewId, chatId);
-              setReport(newReport);
+              // Use LLM to generate report from chat
+              const interviewType = interviewData.type || '一般面試';
+              const llmReport = await generateInterviewReport(chat?.messages || [], interviewType);
+              setReport({
+                ...llmReport,
+                id: '', // You can generate a temp ID or leave empty
+                interviewId: interviewData.id,
+                chatId,
+                createdAt: new Date().toISOString(),
+              });
             } catch (error) {
               console.error('生成報告失敗:', error);
               alert('生成報告時發生錯誤，請稍後再試。\n\n錯誤訊息: ' + (error instanceof Error ? error.message : '未知錯誤'));
@@ -101,11 +110,18 @@ export default function InterviewReport() {
             alert('對話內容不足，無法生成報告。\n\n需要至少 5 個面試官問題才能生成報告。');
           }
         } else {
-          // Generate report for interview
+          // Generate report for interview (所有聊天彙總)
           try {
             setGenerating(true);
-            const newReport = await api.generateReport(interviewId);
-            setReport(newReport);
+            const interviewType = interviewData.type || '一般面試';
+            const allMessages = interviewData.chats.flatMap((c:any) => c.messages);
+            const llmReport = await generateInterviewReport(allMessages, interviewType);
+            setReport({
+              ...llmReport,
+              id: '',
+              interviewId: interviewData.id,
+              createdAt: new Date().toISOString(),
+            });
           } catch (error) {
             console.error('生成報告失敗:', error);
             alert('生成報告時發生錯誤，請稍後再試。\n\n錯誤訊息: ' + (error instanceof Error ? error.message : '未知錯誤'));
